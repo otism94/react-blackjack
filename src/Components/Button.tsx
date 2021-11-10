@@ -1,9 +1,15 @@
 const Button = ({
   title,
+  disabled = false,
   onClick,
 }: {
   title: string;
+  disabled: boolean;
   onClick: React.Dispatch<React.SetStateAction<any>>;
-}) => <button onClick={onClick}>{title}</button>;
+}) => (
+  <button disabled={disabled} onClick={onClick}>
+    {title}
+  </button>
+);
 
 export default Button;

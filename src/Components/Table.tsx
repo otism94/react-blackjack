@@ -5,6 +5,7 @@ import DealerHand from "./DealerHand";
 import PlayerHand from "./PlayerHand";
 import PlayerHUD from "./PlayerHUD";
 import PlayerSplitHand from "./PlayerSplitHand";
+import Result from "./Result";
 
 export type Card = {
   code: string;
@@ -19,6 +20,7 @@ const Table = () => {
 
   // Deck and chips.
   const [deckId, setDeckId] = useState<string>("");
+  const [result, setResult] = useState<string>("");
   const [playerChips, setPlayerChips] = useState<number>(100);
 
   // Dealer hand.
@@ -69,20 +71,23 @@ const Table = () => {
 
   return (
     <>
-      <DealerHand
-        deck_id={deckId}
-        dealerHand={dealerHand}
-        setDealerHand={setDealerHand}
-        dealerHandValue={dealerHandValue}
-      />
+      <DealerHand dealerHand={dealerHand} dealerHandValue={dealerHandValue} />
+      <Result result={result} />
       {playerSplitHand.length ? <PlayerSplitHand /> : null}
-      <PlayerHUD chips={playerChips} />
-      <PlayerHand
+      <PlayerHUD
         deck_id={deckId}
+        chips={playerChips}
         playerHand={playerHand}
         setPlayerHand={setPlayerHand}
         playerHandValue={playerHandValue}
+        dealerHand={dealerHand}
+        setDealerHand={setDealerHand}
+        dealerHandValue={dealerHandValue}
+        setDealerHandValue={setDealerHandValue}
+        result={result}
+        setResult={setResult}
       />
+      <PlayerHand playerHand={playerHand} playerHandValue={playerHandValue} />
     </>
   );
 };

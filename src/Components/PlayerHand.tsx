@@ -1,5 +1,6 @@
-import Button from "./Button";
-import { displayValueOrBust, drawCards } from "../API/functions";
+import Card from "./Card";
+import CardSlot from "./CardSlot";
+import { displayValueOrBlackjack } from "../API/functions";
 
 //#region Types
 
@@ -14,29 +15,44 @@ export type Card = {
 //#endregion
 
 const PlayerHand = ({
-  deck_id,
   playerHand,
-  setPlayerHand,
   playerHandValue,
 }: {
-  deck_id: string;
   playerHand: Card[];
-  setPlayerHand: React.Dispatch<React.SetStateAction<Card[]>>;
   playerHandValue: number;
-}) => (
-  <>
-    <p>{displayValueOrBust(playerHandValue, playerHand)}</p>
-    <Button
-      title="Draw Card"
-      onClick={() => drawCards(deck_id, 1, "player_hand", setPlayerHand)}
-    />
-    <br />
-    {playerHand.length
-      ? playerHand.map((card) => (
-          <img key={card.code} src={card.image} alt={card.code} />
-        ))
-      : null}
-  </>
-);
+}) => {
+  const cardSlots = (cards: number): any => {
+    let slots = [];
+    for (let i = 0; i < 6 - cards; i++) {
+      slots.push(<CardSlot key={i} />);
+    }
+    return slots;
+  };
+
+  const emptySlots: Element[] = Array.from(
+    document.querySelectorAll(".card-slot-fill")
+  );
+  if (emptySlots.length)
+    emptySlots.slice(-1)[0].innerHTML = '<i class="fas fa-crown"></i>';
+
+  return (
+    <>
+      <p className="hand-value">
+        Player:{" "}
+        <span className={playerHandValue <= 21 ? "" : "bust"}>
+          {displayValueOrBlackjack(playerHandValue, playerHand)}
+        </span>
+      </p>
+      <div className="hand">
+        {playerHand.length
+          ? playerHand.map((card) => (
+              <Card key={card.code} src={card.image} alt={card.code} />
+            ))
+          : null}
+        {playerHand.length < 6 ? cardSlots(playerHand.length) : null}
+      </div>
+    </>
+  );
+};
 
 export default PlayerHand;

@@ -82,6 +82,7 @@ export const startGame = async (
  * @param count The number of cards to draw. Default: 1
  * @param pile_name The hand (pile) to add the drawn cards to.
  * @param setHandState The useState setter of the hand to be updated.
+ * @returns The newly updated hand.
  */
 export const drawCards = async (
   deck_id: string,
@@ -113,40 +114,51 @@ export const drawCards = async (
       });
 
     // Fetch the newly-updated hand and update the hand state.
-    await axios
-      .get(
-        `http://deckofcardsapi.com/api/deck/${deck_id}/pile/${pile_name}/list/`
-      )
-      .then((res) => {
-        if (!res.data.success) throw "Failed to fetch hand.";
-        else setHandState(res.data.piles[pile_name].cards);
-      });
+    const newHandRes: any = await axios.get(
+      `http://deckofcardsapi.com/api/deck/${deck_id}/pile/${pile_name}/list/`
+    );
+
+    if (!newHandRes.data.success) throw "Failed to fetch hand.";
+    setHandState(newHandRes.data.piles[pile_name].cards);
+    return newHandRes.data.piles[pile_name].card;
   } catch (ex) {
     console.log(ex);
   }
+};
+
+export const playerStand = async (
+  deck_id: string,
+  dealerHand: Card[],
+  setDealerHand: React.Dispatch<React.SetStateAction<Card[]>>
+) => {
+  let value: number = 0;
+  await drawCards(deck_id, 1, "dealer_hand", setDealerHand);
 };
 
 /**
  * Gets a string representation of the passed-in hand's value.
  * @param handValue The value state to turn into a string.
  * @param hand The hand state. Used to determine a blackjack.
- * @returns String containing the value, including whether it's bust or a blackjack.
+ * @returns String containing the value or "Blackjack".
  */
-export const displayValueOrBust = (handValue: number, hand: Card[]): string => {
-  if (handValue > 21) return `Bust (${handValue})`;
-  else if (hand.length === 2 && handValue === 21) return "Blackjack!";
-  else return `Value: ${handValue}`;
+export const displayValueOrBlackjack = (
+  handValue: number,
+  hand: Card[]
+): string => {
+  if (hand.length === 2 && handValue === 21) return "Blackjack";
+  else return `${handValue}`;
 };
 
 /**
  * Updates a hand value based on the cards currently in it.
  * @param hand The hand (array of cards) whose cards to value.
- * @param setHandValue The hand's value state setter.
+ * @param setHandValue Optional: The hand's value state setter. If not included, no hand states will be updated and just the value will be returned.
+ * @returns The value of the hand.
  */
 export const updateHandValue = (
   hand: Card[],
-  setHandValue: React.Dispatch<React.SetStateAction<number>>
-): void => {
+  setHandValue?: React.Dispatch<React.SetStateAction<number>>
+) => {
   let value: number = 0;
   const acesInHand: Card[] = [];
 
@@ -178,5 +190,6 @@ export const updateHandValue = (
     else value += 4;
   }
 
-  setHandValue(value);
+  if (setHandValue) setHandValue(value);
+  return value;
 };

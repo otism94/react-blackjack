@@ -1,5 +1,5 @@
-import Button from "./Button";
-import { displayValueOrBust, drawCards } from "../API/functions";
+import { displayValueOrBlackjack } from "../API/functions";
+import Card from "./Card";
 
 //#region Types
 
@@ -14,28 +14,26 @@ export type Card = {
 //#endregion
 
 const DealerHand = ({
-  deck_id,
   dealerHand,
-  setDealerHand,
   dealerHandValue,
 }: {
-  deck_id: string;
   dealerHand: Card[];
-  setDealerHand: React.Dispatch<React.SetStateAction<Card[]>>;
   dealerHandValue: number;
 }) => (
   <>
-    <p>{displayValueOrBust(dealerHandValue, dealerHand)}</p>
-    <Button
-      title="Draw Card"
-      onClick={() => drawCards(deck_id, 1, "dealer_hand", setDealerHand)}
-    />
-    <br />
-    {dealerHand.length
-      ? dealerHand.map((card) => (
-          <img key={card.code} src={card.image} alt={card.code} />
-        ))
-      : null}
+    <p className="hand-value">
+      Dealer:{" "}
+      <span className={dealerHandValue <= 21 ? "" : "bust"}>
+        {displayValueOrBlackjack(dealerHandValue, dealerHand)}
+      </span>
+    </p>
+    <div className="hand">
+      {dealerHand.length
+        ? dealerHand.map((card) => (
+            <Card key={card.code} src={card.image} alt={card.code} />
+          ))
+        : null}
+    </div>
   </>
 );
 
