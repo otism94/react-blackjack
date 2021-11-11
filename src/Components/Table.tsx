@@ -6,14 +6,8 @@ import PlayerHand from "./PlayerHand";
 import PlayerHUD from "./PlayerHUD";
 import PlayerSplitHand from "./PlayerSplitHand";
 import Result from "./Result";
-
-export type Card = {
-  code: string;
-  image: string;
-  images: object;
-  suit: string;
-  value: string;
-};
+import type { TCard } from "../API/types";
+import equal from "fast-deep-equal";
 
 const Table = () => {
   //#region States
@@ -24,48 +18,43 @@ const Table = () => {
   const [playerChips, setPlayerChips] = useState<number>(100);
 
   // Dealer hand.
-  const [dealerHand, setDealerHand] = useStateWithCallback<Card[]>([], () => {
-    if (dealerHand.length > prevDealerHand.length) {
+  const [dealerHand, setDealerHand] = useStateWithCallback<TCard[]>([], () => {
+    if (!equal(dealerHand, prevDealerHand)) {
       setPrevDealerHand(dealerHand);
       updateHandValue(dealerHand, setDealerHandValue);
     }
   });
-  const [prevDealerHand, setPrevDealerHand] = useState<Card[]>([]);
+  const [prevDealerHand, setPrevDealerHand] = useState<TCard[]>([]);
   const [dealerHandValue, setDealerHandValue] = useState<number>(0);
 
   // Player hand.
-  const [playerHand, setPlayerHand] = useStateWithCallback<Card[]>([], () => {
-    if (playerHand.length > prevPlayerHand.length) {
+  const [playerHand, setPlayerHand] = useStateWithCallback<TCard[]>([], () => {
+    if (!equal(playerHand, prevPlayerHand)) {
       setPrevPlayerHand(playerHand);
       updateHandValue(playerHand, setPlayerHandValue);
     }
   });
-  const [prevPlayerHand, setPrevPlayerHand] = useState<Card[]>([]);
+  const [prevPlayerHand, setPrevPlayerHand] = useState<TCard[]>([]);
   const [playerHandValue, setPlayerHandValue] = useState<number>(0);
 
   // Player split hand.
-  const [playerSplitHand, setPlayerSplitHand] = useStateWithCallback<Card[]>(
+  const [playerSplitHand, setPlayerSplitHand] = useStateWithCallback<TCard[]>(
     [],
     () => {
-      if (playerSplitHand.length > prevPlayerHand.length) {
+      if (!equal(playerSplitHand, prevPlayerSplitHand)) {
         setPrevPlayerSplitHand(playerSplitHand);
         updateHandValue(playerSplitHand, setPlayerSplitHandValue);
       }
     }
   );
-  const [prevPlayerSplitHand, setPrevPlayerSplitHand] = useState<Card[]>([]);
+  const [prevPlayerSplitHand, setPrevPlayerSplitHand] = useState<TCard[]>([]);
   const [playerSplitHandValue, setPlayerSplitHandValue] = useState<number>(0);
 
   useEffect(() => {
     (async () => {
-      await startGame(
-        setDeckId,
-        setDealerHand,
-        setPlayerHand,
-        setPlayerSplitHand
-      );
+      await startGame(setDeckId, setDealerHand, setPlayerHand);
     })();
-  }, []);
+  }, [setDeckId, setDealerHand, setPlayerHand]);
 
   //#endregion
 
@@ -76,10 +65,16 @@ const Table = () => {
       {playerSplitHand.length ? <PlayerSplitHand /> : null}
       <PlayerHUD
         deck_id={deckId}
+        setDeckId={setDeckId}
         chips={playerChips}
         playerHand={playerHand}
         setPlayerHand={setPlayerHand}
         playerHandValue={playerHandValue}
+        setPlayerHandValue={setPlayerHandValue}
+        playerSplitHand={playerSplitHand}
+        setPlayerSplitHand={setPlayerSplitHand}
+        playerSplitHandValue={playerSplitHandValue}
+        setPlayerSplitHandValue={setPlayerSplitHandValue}
         dealerHand={dealerHand}
         setDealerHand={setDealerHand}
         dealerHandValue={dealerHandValue}

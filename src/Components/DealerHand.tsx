@@ -1,23 +1,12 @@
 import { displayValueOrBlackjack } from "../API/functions";
 import Card from "./Card";
-
-//#region Types
-
-export type Card = {
-  code: string;
-  image: string;
-  images: object;
-  suit: string;
-  value: string;
-};
-
-//#endregion
+import type { TCard } from "../API/types";
 
 const DealerHand = ({
   dealerHand,
   dealerHandValue,
 }: {
-  dealerHand: Card[];
+  dealerHand: TCard[];
   dealerHandValue: number;
 }) => (
   <>

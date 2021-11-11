@@ -1,48 +1,54 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import React from "react";
-
-export type Card = {
-  code: string;
-  image: string;
-  images: object;
-  suit: string;
-  value: string;
-};
+import type { TCard } from "./types";
 
 /**
  * Creates a new deck, deals two cards to the player, one to the dealer, and resets the player's split hand.
  * @param setDeckId Deck ID state setter.
  * @param setDealerHand Dealer hand state setter.
  * @param setPlayerHand Player hand state setter.
- * @param setPlayerSplitHand Player split hand state setter.
+ * @param recycledDeckId Optional: Existing deck ID that can be reshuffled and used again.
  */
 export const startGame = async (
   setDeckId: React.Dispatch<React.SetStateAction<string>>,
-  setDealerHand: React.Dispatch<React.SetStateAction<Card[]>>,
-  setPlayerHand: React.Dispatch<React.SetStateAction<Card[]>>,
-  setPlayerSplitHand: React.Dispatch<React.SetStateAction<Card[]>>
+  setDealerHand: React.Dispatch<React.SetStateAction<TCard[]>>,
+  setPlayerHand: React.Dispatch<React.SetStateAction<TCard[]>>,
+  recycledDeckId?: string
 ) => {
   try {
-    setPlayerSplitHand([]);
+    let deck_id: string = "";
+    let deckRes: AxiosResponse;
 
-    const newDeckRes = await axios.get(
-      "http://deckofcardsapi.com/api/deck/new/draw/?count=3"
-    );
+    if (recycledDeckId !== undefined) {
+      deck_id = recycledDeckId;
 
-    if (!newDeckRes.data.success) throw "Error creating deck.";
+      deckRes = await axios.get(
+        `http://deckofcardsapi.com/api/deck/${deck_id}/draw/?count=3`
+      );
 
-    const newDeckId: string = newDeckRes.data.deck_id;
-    setDeckId(newDeckId);
+      if (!deckRes.data.success) throw "Error creating deck.";
 
-    const dealerCard: string = newDeckRes.data.cards[0].code;
-    const playerCards: string = newDeckRes.data.cards
+      deck_id = deckRes.data.deck_id;
+    } else {
+      deckRes = await axios.get(
+        "http://deckofcardsapi.com/api/deck/new/draw/?count=3"
+      );
+
+      if (!deckRes.data.success) throw "Error creating deck.";
+
+      deck_id = deckRes.data.deck_id;
+      setDeckId(deck_id);
+    }
+
+    const dealerCard: string = deckRes.data.cards[0].code;
+    const playerCards: string = deckRes.data.cards
       .slice(-2)
       .map((card: { code: string }) => card.code)
       .join(",");
 
     await axios
       .get(
-        `http://deckofcardsapi.com/api/deck/${newDeckId}/pile/player_hand/add/?cards=${playerCards}`
+        `http://deckofcardsapi.com/api/deck/${deck_id}/pile/player_hand/add/?cards=${playerCards}`
       )
       .then((res) => {
         if (!res.data.success) throw "Error adding cards to player hand.";
@@ -50,22 +56,22 @@ export const startGame = async (
 
     await axios
       .get(
-        `http://deckofcardsapi.com/api/deck/${newDeckId}/pile/dealer_hand/add/?cards=${dealerCard}`
+        `http://deckofcardsapi.com/api/deck/${deck_id}/pile/dealer_hand/add/?cards=${dealerCard}`
       )
       .then((res) => {
         if (!res.data.success) throw "Error adding cards to dealer hand.";
       });
 
-    const playerHandRes = await axios.get(
-      `http://deckofcardsapi.com/api/deck/${newDeckId}/pile/player_hand/list/`
+    const playerHandRes: AxiosResponse = await axios.get(
+      `http://deckofcardsapi.com/api/deck/${deck_id}/pile/player_hand/list/`
     );
 
     if (!playerHandRes.data.success) throw "Failed to fetch player hand.";
 
     setPlayerHand(playerHandRes.data.piles.player_hand.cards);
 
-    const dealerHandRes = await axios.get(
-      `http://deckofcardsapi.com/api/deck/${newDeckId}/pile/dealer_hand/list/`
+    const dealerHandRes: AxiosResponse = await axios.get(
+      `http://deckofcardsapi.com/api/deck/${deck_id}/pile/dealer_hand/list/`
     );
 
     if (!dealerHandRes.data.success) throw "Failed to fetch player hand.";
@@ -82,17 +88,17 @@ export const startGame = async (
  * @param count The number of cards to draw. Default: 1
  * @param pile_name The hand (pile) to add the drawn cards to.
  * @param setHandState The useState setter of the hand to be updated.
- * @returns The newly updated hand.
+ * @returns The updated hand data from the API.
  */
 export const drawCards = async (
   deck_id: string,
   count: number = 1,
   pile_name: string,
-  setHandState: React.Dispatch<React.SetStateAction<Card[]>>
+  setHandState: React.Dispatch<React.SetStateAction<TCard[]>>
 ) => {
   try {
     // Draw (count) cards from the deck.
-    const fetchCardsRes = await axios.get(
+    const fetchCardsRes: AxiosResponse = await axios.get(
       `http://deckofcardsapi.com/api/deck/${deck_id}/draw/?count=${count}`
     );
 
@@ -114,53 +120,30 @@ export const drawCards = async (
       });
 
     // Fetch the newly-updated hand and update the hand state.
-    const newHandRes: any = await axios.get(
+    const newHandRes: AxiosResponse = await axios.get(
       `http://deckofcardsapi.com/api/deck/${deck_id}/pile/${pile_name}/list/`
     );
 
     if (!newHandRes.data.success) throw "Failed to fetch hand.";
     setHandState(newHandRes.data.piles[pile_name].cards);
-    return newHandRes.data.piles[pile_name].card;
+
+    return newHandRes.data.piles[pile_name].cards; // Return the data so timeouts know when to resume.
   } catch (ex) {
     console.log(ex);
   }
 };
 
-export const playerStand = async (
-  deck_id: string,
-  dealerHand: Card[],
-  setDealerHand: React.Dispatch<React.SetStateAction<Card[]>>
-) => {
-  let value: number = 0;
-  await drawCards(deck_id, 1, "dealer_hand", setDealerHand);
-};
-
-/**
- * Gets a string representation of the passed-in hand's value.
- * @param handValue The value state to turn into a string.
- * @param hand The hand state. Used to determine a blackjack.
- * @returns String containing the value or "Blackjack".
- */
-export const displayValueOrBlackjack = (
-  handValue: number,
-  hand: Card[]
-): string => {
-  if (hand.length === 2 && handValue === 21) return "Blackjack";
-  else return `${handValue}`;
-};
-
 /**
  * Updates a hand value based on the cards currently in it.
  * @param hand The hand (array of cards) whose cards to value.
- * @param setHandValue Optional: The hand's value state setter. If not included, no hand states will be updated and just the value will be returned.
- * @returns The value of the hand.
+ * @param setHandValue The hand's value state setter.
  */
 export const updateHandValue = (
-  hand: Card[],
-  setHandValue?: React.Dispatch<React.SetStateAction<number>>
+  hand: TCard[],
+  setHandValue: React.Dispatch<React.SetStateAction<number>>
 ) => {
   let value: number = 0;
-  const acesInHand: Card[] = [];
+  const acesInHand: TCard[] = [];
 
   // Parse the value from the API object value.
   hand.forEach((card) => {
@@ -190,6 +173,51 @@ export const updateHandValue = (
     else value += 4;
   }
 
-  if (setHandValue) setHandValue(value);
-  return value;
+  setHandValue(value);
+};
+
+/**
+ * Gets a string representation of the passed-in hand's value.
+ * @param handValue The value state to turn into a string.
+ * @param hand The hand state. Used to determine a blackjack.
+ * @returns String containing the value or "Blackjack".
+ */
+export const displayValueOrBlackjack = (
+  handValue: number,
+  hand: TCard[]
+): string => {
+  if (hand.length === 2 && handValue === 21) return "Blackjack";
+  else return `${handValue}`;
+};
+
+/**
+ * Returns hands to the deck, shuffles it, and calls startGame again.
+ * @param setDeckId Deck ID state setter.
+ * @param setDealerHand Dealer hand state setter.
+ * @param setPlayerHand Player hand state setter.
+ * @param deck_id The existing deck's ID.
+ */
+export const restartGame = async (
+  setDeckId: React.Dispatch<React.SetStateAction<string>>,
+  setDealerHand: React.Dispatch<React.SetStateAction<TCard[]>>,
+  setPlayerHand: React.Dispatch<React.SetStateAction<TCard[]>>,
+  deck_id: string
+) => {
+  try {
+    await axios
+      .get(`http://deckofcardsapi.com/api/deck/${deck_id}/return/`)
+      .then((res) => {
+        if (!res.data.success) throw "Error returning cards to deck.";
+      });
+
+    await axios
+      .get(`http://deckofcardsapi.com/api/deck/${deck_id}/shuffle/`)
+      .then((res) => {
+        if (!res.data.success) throw "Error shuffling deck.";
+      });
+
+    await startGame(setDeckId, setDealerHand, setPlayerHand, deck_id);
+  } catch (ex) {
+    console.log(ex);
+  }
 };

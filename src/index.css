@@ -1,5 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Fleur+De+Leah&family=Vollkorn:ital,wght@0,400;0,700;1,400;1,700&display=swap");
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   max-height: 100vh;
   margin: 0;
@@ -118,8 +122,15 @@ h3 {
   }
 }
 
+#player-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .result {
   min-height: 74px;
+  margin: 20px 0;
   font-family: "Fleur De Leah";
   font-size: 54px;
   font-weight: bold;
@@ -128,5 +139,5 @@ h3 {
 }
 
 .result p {
-  margin: 20px 0;
+  margin: 0;
 }
