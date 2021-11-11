@@ -77,6 +77,8 @@ export const startGame = async (
     if (!dealerHandRes.data.success) throw "Failed to fetch player hand.";
 
     setDealerHand(dealerHandRes.data.piles.dealer_hand.cards);
+
+    console.log("Success");
   } catch (ex) {
     console.log(ex);
   }
