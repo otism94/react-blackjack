@@ -2,24 +2,38 @@ import { useContext } from "react";
 import { GameContext } from "./Context/GameContext";
 import Header from "./Components/Header";
 import Button from "./Components/Button";
-import { TCard } from "./API/types";
+import PlayerHand from "./Components/PlayerHand";
+import DealerHand from "./Components/DealerHand";
+import Result from "./Components/Result";
+import { GameStatus } from "./API/types";
 
 const App = () => {
-  const { deck, player, dealer, actions } = useContext(GameContext);
+  const { gameStatus, result, playerHandName, actions } =
+    useContext(GameContext);
 
   return (
     <>
       <Header />
+      <DealerHand />
+      <Result result={result} />
       <Button
-        title="Play"
-        disabled={false}
-        onClick={async () => await actions.start()}
+        title="Hit"
+        disabled={gameStatus !== GameStatus.PlayerTurn}
+        onClick={async () => await actions.hit(playerHandName)}
       />
-      <ul>
-        <li>Deck: {deck}</li>
-        <li>Player: {player.playerHandValue}</li>
-        <li>Dealer: {dealer.dealerHandValue}</li>
-      </ul>
+      <Button
+        title="Stand"
+        disabled={gameStatus !== GameStatus.PlayerTurn}
+        onClick={() => actions.stand()}
+      />
+      {gameStatus === GameStatus.Setup || gameStatus === GameStatus.Finished ? (
+        <Button
+          title="Play"
+          disabled={false}
+          onClick={async () => await actions.start()}
+        />
+      ) : null}
+      <PlayerHand />
     </>
   );
 };

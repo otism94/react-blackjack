@@ -1,12 +1,12 @@
 //#region Context Interfaces
-export interface Game {
+export interface IGame {
   gameStatus: GameStatus;
   deck: string;
-  player: Player;
-  dealer: Dealer;
+  player: IPlayer;
+  dealer: IDealer;
 }
 
-export interface Player {
+export interface IPlayer {
   playerStatus: Status;
   chips: number;
   playerHand: TCard[];
@@ -15,7 +15,7 @@ export interface Player {
   splitHandValue: number;
 }
 
-export interface Dealer {
+export interface IDealer {
   dealerStatus: Status;
   dealerHand: TCard[];
   dealerHandValue: number;
@@ -42,8 +42,9 @@ export enum Status {
 
 export enum GameStatus {
   NotPlaying,
+  Setup,
   PlayerTurn,
   DealerTurn,
-  Resetting,
+  Finished,
 }
 //#endregion
