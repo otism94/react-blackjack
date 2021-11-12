@@ -1,4 +1,5 @@
 //#region Context Interfaces
+
 export interface IGame {
   gameStatus: GameStatus;
   deck: string;
@@ -20,9 +21,11 @@ export interface IDealer {
   dealerHand: TCard[];
   dealerHandValue: number;
 }
+
 //#endregion
 
 //#region Types
+
 export type TCard = {
   code: string;
   image: string;
@@ -47,4 +50,5 @@ export enum GameStatus {
   DealerTurn,
   Finished,
 }
+
 //#endregion

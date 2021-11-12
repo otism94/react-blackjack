@@ -1,6 +1,6 @@
 import Card from "./Card";
-import type { TCard } from "../API/types";
-import { displayValueOrBlackjack } from "../API/functions";
+import type { TCard } from "../Context/Types";
+import { displayValueOrBlackjack } from "../Context/Functions";
 import { useContext } from "react";
 import { GameContext } from "../Context/GameContext";
 

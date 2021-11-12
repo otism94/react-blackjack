@@ -1,6 +1,13 @@
-import { createContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import axios, { AxiosResponse } from "axios";
-import { IGame, GameStatus, Status, TCard } from "../API/types";
+import { IGame, GameStatus, Status, TCard } from "./Types";
+import { determineResult, drawCard } from "./Functions";
 
 export const GameContext: any = createContext<IGame>({
   gameStatus: GameStatus.NotPlaying,
@@ -33,30 +40,48 @@ export const Provider = (props: any) => {
   const [playerStatus, setPlayerStatus] = useState<Status>(Status.Waiting);
   const [chips, setChips] = useState<number>(100);
   const [playerHand, setPlayerHand] = useState<TCard[]>([]);
-  const playerHandValue: number = updateHandValue(playerHand);
+  const playerHandValue: number = useMemo(
+    () => updateHandValue(playerHand),
+    [playerHand]
+  );
   const [splitHand, setSplitHand] = useState<TCard[]>([]);
-  const splitHandValue: number = updateHandValue(splitHand);
+  const splitHandValue: number = useMemo(
+    () => updateHandValue(splitHand),
+    [splitHand]
+  );
 
   // Dealer state
   const [dealerStatus, setDealerStatus] = useState<Status>(Status.Waiting);
   const [dealerHand, setDealerHand] = useState<TCard[]>([]);
-  const dealerHandValue: number = updateHandValue(dealerHand);
+  const dealerHandValue: number = useMemo(
+    () => updateHandValue(dealerHand),
+    [dealerHand]
+  );
+
+  // Result
+  const result: string =
+    gameStatus !== GameStatus.Finished
+      ? ""
+      : determineResult(
+          playerHand,
+          playerHandValue,
+          dealerHand,
+          dealerHandValue
+        );
 
   // Hand API names
   const playerHandName: string = "player_hand";
   const splitHandName: string = "split_hand";
   const dealerHandName: string = "dealer_hand";
 
-  // Result
-  const result: string =
-    gameStatus === GameStatus.Finished
-      ? determineResult(
-          playerHand,
-          playerHandValue,
-          dealerHand,
-          dealerHandValue
-        )
-      : "";
+  //#endregion
+
+  //#region Callbacks
+
+  // Draws a card and adds it to the dealer's hand.
+  const dealerHit = useCallback(async () => {
+    await drawCard(deck, dealerHandName, setDealerHand);
+  }, [deck]);
 
   //#endregion
 
@@ -88,10 +113,9 @@ export const Provider = (props: any) => {
       setDealerStatus(Status.Bust);
       return;
     }
-
-    const interval = setInterval(async () => await hit("dealer_hand"), 700);
+    const interval = setInterval(async () => await dealerHit(), 700);
     return () => clearInterval(interval);
-  }, [dealerStatus, dealerHand, dealerHandValue]);
+  }, [dealerStatus, dealerHand, dealerHandValue, dealerHit]);
 
   // Determine game status based on player and dealer statuses.
   useEffect(() => {
@@ -108,9 +132,9 @@ export const Provider = (props: any) => {
       dealerStatus === Status.Blackjack ||
       dealerStatus === Status.Stood ||
       dealerStatus === Status.Bust
-    )
+    ) {
       setGameStatus(GameStatus.Finished);
-    else if (playerStatus === Status.Playing)
+    } else if (playerStatus === Status.Playing)
       setGameStatus(GameStatus.PlayerTurn);
     else if (dealerStatus === Status.Playing)
       setGameStatus(GameStatus.DealerTurn);
@@ -120,6 +144,9 @@ export const Provider = (props: any) => {
 
   //#region Actions
 
+  /**
+   * Creates a new deck, or returns cards to the existing one and shuffles it, then deals the starting cards to the player and dealer. Also updates the player, dealer, and game statuses.
+   */
   const start = async () => {
     // Set game and player statuses.
     setGameStatus(GameStatus.Setup);
@@ -211,58 +238,16 @@ export const Provider = (props: any) => {
     }
   };
 
-  const hit = async (hand: string) => {
-    try {
-      hand = hand.toLowerCase();
-      if (
-        hand !== "player_hand" &&
-        hand !== "split_hand" &&
-        hand !== "dealer_hand"
-      ) {
-        throw new Error(
-          'Invalid hand string passed to function. Valid arguments: "player_hand", "split_hand", or "dealer_hand".'
-        );
-      }
+  /**
+   * Draws one card from the deck and adds it to the specified hand.
+   * @param hand The API string representation of the hand (pile). Accepted values are: `"player_hand"`, `"split_hand"`, or `"dealer_hand"`.
+   */
+  const hit = async (hand: string) =>
+    await drawCard(deck, playerHandName, setPlayerHand);
 
-      // Draw a card from the deck.
-      const fetchCardsRes: AxiosResponse = await axios.get(
-        `http://deckofcardsapi.com/api/deck/${deck}/draw/?count=1`
-      );
-
-      // Throw exception if success returns false.
-      if (!fetchCardsRes.data.success) throw new Error("Error drawing cards.");
-
-      // Join the cards' code value into a string.
-      const cardString: string = fetchCardsRes.data.cards[0].code;
-
-      // Add the drawn card(s) to the hand.
-      await axios
-        .get(
-          `http://deckofcardsapi.com/api/deck/${deck}/pile/${hand}/add/?cards=${cardString}`
-        )
-        .then((res) => {
-          if (!res.data.success) throw new Error("Error adding cards to hand.");
-        });
-
-      // Fetch the newly-updated hand and update the hand state.
-      const newHandRes: AxiosResponse = await axios.get(
-        `http://deckofcardsapi.com/api/deck/${deck}/pile/${hand}/list/`
-      );
-
-      if (!newHandRes.data.success) throw new Error("Failed to fetch hand.");
-
-      if (hand === "player_hand")
-        setPlayerHand(newHandRes.data.piles[hand].cards);
-      else if (hand === "split_hand")
-        setSplitHand(newHandRes.data.piles[hand].cards);
-      else if (hand === "dealer_hand")
-        setDealerHand(newHandRes.data.piles[hand].cards);
-      else throw new Error("I don't know how you got to this point.");
-    } catch (ex) {
-      console.log(ex);
-    }
-  };
-
+  /**
+   * Updates the player, dealer, and game statuses when the player stands.
+   */
   const stand = () => {
     setPlayerStatus(Status.Stood);
     setDealerStatus(Status.Playing);
@@ -290,10 +275,10 @@ export const Provider = (props: any) => {
           dealerHand,
           dealerHandValue,
         },
+        result,
         playerHandName,
         splitHandName,
         dealerHandName,
-        result,
         actions: {
           start,
           hit,
@@ -309,6 +294,11 @@ export const Provider = (props: any) => {
 
 //#region Computed State Functions
 
+/**
+ * Updates a hand value based on the cards currently in it.
+ * @param hand The hand (array of cards) whose cards to value.
+ * @returns The value of the hand.
+ */
 const updateHandValue = (hand: TCard[]): number => {
   let value: number = 0;
   const acesInHand: TCard[] = [];
@@ -342,22 +332,6 @@ const updateHandValue = (hand: TCard[]): number => {
   }
 
   return value;
-};
-
-const determineResult = (
-  playerHand: TCard[],
-  playerHandValue: number,
-  dealerHand: TCard[],
-  dealerHandValue: number
-) => {
-  if (playerHand.length === 2 && playerHandValue === 21) return "Blackjack";
-  else if (dealerHand.length === 2 && dealerHandValue === 21) return "Lose";
-  else if (playerHand.length === 6 && playerHandValue <= 21) return "Charlie";
-  else if (playerHandValue > 21) return "Lose";
-  else if (playerHandValue > dealerHandValue) return "Win";
-  else if (playerHandValue === dealerHandValue) return "Draw";
-  else if (dealerHandValue > 21) return "Win";
-  else return "Lose";
 };
 
 //#endregion

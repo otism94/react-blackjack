@@ -1,11 +1,17 @@
+//#region Imports
+
 import { useContext } from "react";
+
 import { GameContext } from "./Context/GameContext";
+import { GameStatus } from "./Context/Types";
+
 import Header from "./Components/Header";
 import Button from "./Components/Button";
 import PlayerHand from "./Components/PlayerHand";
 import DealerHand from "./Components/DealerHand";
 import Result from "./Components/Result";
-import { GameStatus } from "./API/types";
+
+//#endregion
 
 const App = () => {
   const { gameStatus, result, playerHandName, actions } =
@@ -19,17 +25,22 @@ const App = () => {
       <Button
         title="Hit"
         disabled={gameStatus !== GameStatus.PlayerTurn}
+        className=""
         onClick={async () => await actions.hit(playerHandName)}
       />
       <Button
         title="Stand"
         disabled={gameStatus !== GameStatus.PlayerTurn}
+        className=""
         onClick={() => actions.stand()}
       />
-      {gameStatus === GameStatus.Setup || gameStatus === GameStatus.Finished ? (
+      {gameStatus === GameStatus.NotPlaying ||
+      gameStatus === GameStatus.Setup ||
+      gameStatus === GameStatus.Finished ? (
         <Button
           title="Play"
           disabled={false}
+          className=""
           onClick={async () => await actions.start()}
         />
       ) : null}
