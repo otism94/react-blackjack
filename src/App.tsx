@@ -1,26 +1,52 @@
-import { useState } from "react";
-import "./App.css";
-import Button from "./Components/Button";
-import Game from "./Components/Game";
-import Header from "./Components/Header";
+//#region Imports
 
-function App() {
-  const [gameStart, setGameStart] = useState(false);
+import { useContext } from "react";
+
+import { GameContext } from "./Context/GameContext";
+import { GameStatus } from "./Context/Types";
+
+import Header from "./Components/Header";
+import Button from "./Components/Button";
+import PlayerHand from "./Components/PlayerHand";
+import DealerHand from "./Components/DealerHand";
+import Result from "./Components/Result";
+
+//#endregion
+
+const App = () => {
+  const { gameStatus, result, playerHandName, actions } =
+    useContext(GameContext);
 
   return (
     <>
       <Header />
-      {!gameStart ? (
+      <DealerHand />
+      <Result result={result} />
+      <Button
+        title="Hit"
+        disabled={gameStatus !== GameStatus.PlayerTurn}
+        className=""
+        onClick={async () => await actions.hit(playerHandName)}
+      />
+      <Button
+        title="Stand"
+        disabled={gameStatus !== GameStatus.PlayerTurn}
+        className=""
+        onClick={() => actions.stand()}
+      />
+      {gameStatus === GameStatus.NotPlaying ||
+      gameStatus === GameStatus.Setup ||
+      gameStatus === GameStatus.Finished ? (
         <Button
           title="Play"
           disabled={false}
-          onClick={() => setGameStart(true)}
+          className=""
+          onClick={async () => await actions.start()}
         />
-      ) : (
-        <Game />
-      )}
+      ) : null}
+      <PlayerHand />
     </>
   );
-}
+};
 
 export default App;
