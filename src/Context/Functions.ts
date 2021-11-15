@@ -82,12 +82,25 @@ export const determineResult = (
   dealerHand: TCard[],
   dealerHandValue: number
 ): string => {
-  if (playerHand.length === 2 && playerHandValue === 21) return "Blackjack";
+  if (
+    playerHand.length === 2 &&
+    playerHandValue === 21 &&
+    ((dealerHand.length > 2 && dealerHandValue < 21) ||
+      (dealerHand.length > 2 && dealerHandValue > 21))
+  )
+    return "Blackjack";
+  else if (
+    playerHand.length === 2 &&
+    playerHandValue === 21 &&
+    dealerHand.length === 2 &&
+    dealerHandValue === 21
+  )
+    return "Push";
   else if (dealerHand.length === 2 && dealerHandValue === 21) return "Lose";
   else if (playerHand.length === 6 && playerHandValue <= 21) return "Charlie";
   else if (playerHandValue > 21) return "Lose";
   else if (playerHandValue > dealerHandValue) return "Win";
-  else if (playerHandValue === dealerHandValue) return "Draw";
+  else if (playerHandValue === dealerHandValue) return "Push";
   else if (dealerHandValue > 21) return "Win";
   else return "Lose";
 };

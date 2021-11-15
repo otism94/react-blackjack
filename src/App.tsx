@@ -14,36 +14,24 @@ import Result from "./Components/Result";
 //#endregion
 
 const App = () => {
-  const { gameStatus, result, playerHandName, actions } =
-    useContext(GameContext);
+  const { gameStatus, result, actions } = useContext(GameContext);
 
   return (
     <>
       <Header />
       <DealerHand />
       <Result result={result} />
-      <Button
-        title="Hit"
-        disabled={gameStatus !== GameStatus.PlayerTurn}
-        className=""
-        onClick={async () => await actions.hit(playerHandName)}
-      />
-      <Button
-        title="Stand"
-        disabled={gameStatus !== GameStatus.PlayerTurn}
-        className=""
-        onClick={() => actions.stand()}
-      />
-      {gameStatus === GameStatus.NotPlaying ||
-      gameStatus === GameStatus.Setup ||
-      gameStatus === GameStatus.Finished ? (
-        <Button
-          title="Play"
-          disabled={false}
-          className=""
-          onClick={async () => await actions.start()}
-        />
-      ) : null}
+      <div className="button-group">
+        {gameStatus === GameStatus.NotPlaying ||
+        gameStatus === GameStatus.Finished ? (
+          <Button
+            title={gameStatus === GameStatus.NotPlaying ? "Play" : "Play Again"}
+            disabled={false}
+            className="button"
+            onClick={async () => await actions.start()}
+          />
+        ) : null}
+      </div>
       <PlayerHand />
     </>
   );

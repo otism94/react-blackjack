@@ -1,12 +1,15 @@
 import { useContext, useEffect } from "react";
+import Button from "./Button";
 import Card from "./Card";
 import CardSlot from "./CardSlot";
 import { displayValueOrBlackjack } from "../Context/Functions";
 import type { TCard } from "../Context/Types";
+import { GameStatus } from "../Context/Types";
 import { GameContext } from "../Context/GameContext";
 
 const PlayerHand = () => {
-  const { player } = useContext(GameContext);
+  const { gameStatus, player, playerHandName, actions } =
+    useContext(GameContext);
 
   // Add a crown on the sixth player card slot.
   useEffect(() => {
@@ -33,12 +36,29 @@ const PlayerHand = () => {
 
   return (
     <>
-      <p className="hand-value">
-        Player:{" "}
-        <span className={player.playerHandValue <= 21 ? "" : "bust"}>
-          {displayValueOrBlackjack(player.playerHandValue, player.playerHand)}
-        </span>
-      </p>
+      <div id="player-hud">
+        <p className="hand-value">
+          Player:{" "}
+          <span className={player.playerHandValue <= 21 ? "" : "bust"}>
+            {displayValueOrBlackjack(player.playerHandValue, player.playerHand)}
+          </span>
+        </p>
+        <div className="button-group">
+          <Button
+            title="Hit"
+            disabled={gameStatus !== GameStatus.PlayerTurn}
+            className="button button-hud"
+            onClick={async () => await actions.hit(playerHandName)}
+          />
+          <Button
+            title="Stand"
+            disabled={gameStatus !== GameStatus.PlayerTurn}
+            className="button button-hud"
+            onClick={() => actions.stand()}
+          />
+        </div>
+      </div>
+
       <div className="hand">
         <div className="cards">
           {player.playerHand.length

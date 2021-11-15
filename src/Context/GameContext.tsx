@@ -83,6 +83,15 @@ export const Provider = (props: any) => {
     await drawCard(deck, dealerHandName, setDealerHand);
   }, [deck]);
 
+  const dealerCanPushBlackjack = useCallback(() => {
+    if (
+      dealerHand.length === 1 &&
+      (dealerHandValue === 10 || dealerHandValue === 11)
+    )
+      return true;
+    else return false;
+  }, [dealerHand, dealerHandValue]);
+
   //#endregion
 
   //#region Effects
@@ -90,12 +99,19 @@ export const Provider = (props: any) => {
   // Determine player status when hand changes.
   useEffect(() => {
     if (playerStatus !== Status.Playing) return;
-    if (playerHand.length === 2 && playerHandValue === 21)
+    if (playerHand.length === 2 && playerHandValue === 21) {
       setPlayerStatus(Status.Blackjack);
-    else if (playerHandValue > 21) setPlayerStatus(Status.Bust);
+      if (!dealerCanPushBlackjack()) {
+        setDealerStatus(Status.Stood);
+        setGameStatus(GameStatus.Finished);
+      } else if (dealerCanPushBlackjack()) {
+        setDealerStatus(Status.Playing);
+        setGameStatus(GameStatus.DealerTurn);
+      }
+    } else if (playerHandValue > 21) setPlayerStatus(Status.Bust);
     else if (playerHandValue <= 21 && playerHand.length === 6)
       setPlayerStatus(Status.Charlie);
-  }, [playerStatus, playerHand, playerHandValue]);
+  }, [playerStatus, playerHand, playerHandValue, dealerCanPushBlackjack]);
 
   // Determine dealer status when hand changes.
   useEffect(() => {
@@ -113,8 +129,8 @@ export const Provider = (props: any) => {
       setDealerStatus(Status.Bust);
       return;
     }
-    const interval = setInterval(async () => await dealerHit(), 700);
-    return () => clearInterval(interval);
+    const timeout = setTimeout(async () => await dealerHit(), 500);
+    return () => clearTimeout(timeout);
   }, [dealerStatus, dealerHand, dealerHandValue, dealerHit]);
 
   // Determine game status based on player and dealer statuses.
@@ -126,7 +142,6 @@ export const Provider = (props: any) => {
     )
       return;
     if (
-      playerStatus === Status.Blackjack ||
       playerStatus === Status.Bust ||
       playerStatus === Status.Charlie ||
       dealerStatus === Status.Blackjack ||
@@ -230,7 +245,6 @@ export const Provider = (props: any) => {
 
       setDealerHand(dealerHandRes.data.piles.dealer_hand.cards);
 
-      // Set the game and player statuses.
       setGameStatus(GameStatus.PlayerTurn);
       setPlayerStatus(Status.Playing);
     } catch (ex) {
@@ -250,8 +264,8 @@ export const Provider = (props: any) => {
    */
   const stand = () => {
     setPlayerStatus(Status.Stood);
-    setDealerStatus(Status.Playing);
     setGameStatus(GameStatus.DealerTurn);
+    setDealerStatus(Status.Playing);
   };
 
   //#endregion
