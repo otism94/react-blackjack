@@ -8,7 +8,7 @@ const Header = () => {
         <span className="suit-red">&diams;</span>
       </h1>
       <div id="header-info">
-        <h2>Blackjack pays 3:2</h2>
+        <h2>Blackjack pays 3 to 2</h2>
         <h3>Dealer must draw to 16, and stand on all 17's</h3>
       </div>
     </header>

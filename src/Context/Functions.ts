@@ -1,5 +1,6 @@
 import axios, { AxiosResponse } from "axios";
-import type { TCard } from "./Types";
+import Result from "../Components/Result";
+import { GameStatus, TResult, TCard } from "./Types";
 
 /**
  * Draws one card from the deck and adds it to the specified hand.
@@ -74,33 +75,76 @@ export const displayValueOrBlackjack = (
  * @param playerHandValue The player's hand value.
  * @param dealerHand The dealer's hand.
  * @param dealerHandValue The dealer's hand value.
+ * @param setBet The bet state setter.
+ * @param setChips The chips state setter.
  * @returns A string containing the result.
  */
-export const determineResult = (
+const determineResult = (
   playerHand: TCard[],
   playerHandValue: number,
   dealerHand: TCard[],
   dealerHandValue: number
-): string => {
+): TResult => {
   if (
     playerHand.length === 2 &&
     playerHandValue === 21 &&
     ((dealerHand.length > 2 && dealerHandValue < 21) ||
       (dealerHand.length > 2 && dealerHandValue > 21))
   )
-    return "Blackjack";
+    return TResult.Blackjack;
   else if (
     playerHand.length === 2 &&
     playerHandValue === 21 &&
     dealerHand.length === 2 &&
     dealerHandValue === 21
   )
-    return "Push";
-  else if (dealerHand.length === 2 && dealerHandValue === 21) return "Lose";
-  else if (playerHand.length === 6 && playerHandValue <= 21) return "Charlie";
-  else if (playerHandValue > 21) return "Lose";
-  else if (playerHandValue > dealerHandValue) return "Win";
-  else if (playerHandValue === dealerHandValue) return "Push";
-  else if (dealerHandValue > 21) return "Win";
-  else return "Lose";
+    return TResult.Push;
+  else if (dealerHand.length === 2 && dealerHandValue === 21)
+    return TResult.Lose;
+  else if (playerHand.length === 6 && playerHandValue <= 21)
+    return TResult.Charlie;
+  else if (playerHandValue > 21) return TResult.Bust;
+  else if (playerHandValue > dealerHandValue) return TResult.Win;
+  else if (playerHandValue === dealerHandValue) return TResult.Push;
+  else if (dealerHandValue > 21) return TResult.Win;
+  else return TResult.Lose;
+};
+
+const determinePayout = (
+  result: TResult,
+  bet: number,
+  setBet: any,
+  setChips: any
+) => {
+  if (result === TResult.Blackjack) {
+    setChips((prev: number) => prev + bet * 1.5);
+    setBet(0);
+  } else if (result === TResult.Win || result === TResult.Charlie) {
+    setChips((prev: number) => prev + bet * 2);
+    setBet(0);
+  } else if (result === TResult.Push) {
+    setChips((prev: number) => prev + bet);
+    setBet(0);
+  } else setBet(0);
+};
+
+export const determineResultAndPayout = (
+  playerHand: TCard[],
+  playerHandValue: number,
+  dealerHand: TCard[],
+  dealerHandValue: number,
+  bet: number,
+  setBet: any,
+  setChips: any,
+  setGameStatus: any
+): TResult => {
+  const result = determineResult(
+    playerHand,
+    playerHandValue,
+    dealerHand,
+    dealerHandValue
+  );
+  determinePayout(result, bet, setBet, setChips);
+  setGameStatus(GameStatus.Finished);
+  return result;
 };

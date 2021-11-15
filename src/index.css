@@ -72,15 +72,6 @@ h3 {
   color: rgb(53, 53, 53);
 }
 
-.hand-value {
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.bust {
-  color: rgb(196, 0, 0);
-}
-
 .hand {
   display: flex;
   position: relative;
@@ -140,6 +131,22 @@ h3 {
 
 #player-hud p {
   display: inline-block;
+}
+
+.hand-value {
+  justify-self: flex-start;
+  width: 25%;
+  text-align: center;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.bust {
+  color: rgb(196, 0, 0);
+}
+
+.chips {
+  justify-self: flex-end;
 }
 
 .button-group {

@@ -6,15 +6,16 @@ import {
   useState,
 } from "react";
 import axios, { AxiosResponse } from "axios";
-import { IGame, GameStatus, Status, TCard } from "./Types";
-import { determineResult, drawCard } from "./Functions";
+import { IGame, GameStatus, Status, TCard, TResult } from "./Types";
+import { determineResultAndPayout, drawCard } from "./Functions";
 
 export const GameContext: any = createContext<IGame>({
   gameStatus: GameStatus.NotPlaying,
   deck: "",
   player: {
     playerStatus: Status.Waiting,
-    chips: 100,
+    chips: 200,
+    bet: 0,
     playerHand: [],
     playerHandValue: 0,
     splitHand: [],
@@ -38,7 +39,8 @@ export const Provider = (props: any) => {
 
   // Player state
   const [playerStatus, setPlayerStatus] = useState<Status>(Status.Waiting);
-  const [chips, setChips] = useState<number>(100);
+  const [chips, setChips] = useState<number>(200);
+  const [bet, setBet] = useState<number>(0);
   const [playerHand, setPlayerHand] = useState<TCard[]>([]);
   const playerHandValue: number = useMemo(
     () => updateHandValue(playerHand),
@@ -59,15 +61,7 @@ export const Provider = (props: any) => {
   );
 
   // Result
-  const result: string =
-    gameStatus !== GameStatus.Finished
-      ? ""
-      : determineResult(
-          playerHand,
-          playerHandValue,
-          dealerHand,
-          dealerHandValue
-        );
+  const [result, setResult] = useState<TResult>(TResult.Undecided);
 
   // Hand API names
   const playerHandName: string = "player_hand";
@@ -83,6 +77,7 @@ export const Provider = (props: any) => {
     await drawCard(deck, dealerHandName, setDealerHand);
   }, [deck]);
 
+  // Checks whether the dealer can draw a blackjack based on their first card.
   const dealerCanPushBlackjack = useCallback(() => {
     if (
       dealerHand.length === 1 &&
@@ -91,6 +86,20 @@ export const Provider = (props: any) => {
       return true;
     else return false;
   }, [dealerHand, dealerHandValue]);
+
+  // Gets the result of a game and pays out.
+  const handleGameOver = useCallback(() => {
+    return determineResultAndPayout(
+      playerHand,
+      playerHandValue,
+      dealerHand,
+      dealerHandValue,
+      bet,
+      setBet,
+      setChips,
+      setGameStatus
+    );
+  }, [bet, dealerHand, dealerHandValue, playerHand, playerHandValue]);
 
   //#endregion
 
@@ -103,20 +112,28 @@ export const Provider = (props: any) => {
       setPlayerStatus(Status.Blackjack);
       if (!dealerCanPushBlackjack()) {
         setDealerStatus(Status.Stood);
-        setGameStatus(GameStatus.Finished);
+        setGameStatus(GameStatus.Resolving);
       } else if (dealerCanPushBlackjack()) {
         setDealerStatus(Status.Playing);
         setGameStatus(GameStatus.DealerTurn);
       }
-    } else if (playerHandValue > 21) setPlayerStatus(Status.Bust);
-    else if (playerHandValue <= 21 && playerHand.length === 6)
+    } else if (playerHandValue > 21) {
+      setPlayerStatus(Status.Bust);
+      setDealerStatus(Status.Stood);
+    } else if (playerHandValue <= 21 && playerHand.length === 6)
       setPlayerStatus(Status.Charlie);
   }, [playerStatus, playerHand, playerHandValue, dealerCanPushBlackjack]);
 
   // Determine dealer status when hand changes.
   useEffect(() => {
     if (dealerStatus !== Status.Playing) return;
-    if (dealerHand.length === 2 && dealerHandValue === 21) {
+    if (
+      playerStatus === Status.Blackjack &&
+      dealerHand.length === 2 &&
+      dealerHandValue < 21
+    ) {
+      setDealerStatus(Status.Stood);
+    } else if (dealerHand.length === 2 && dealerHandValue === 21) {
       setDealerStatus(Status.Blackjack);
       return;
     } else if (dealerHandValue >= 17 && dealerHandValue <= 21) {
@@ -131,12 +148,13 @@ export const Provider = (props: any) => {
     }
     const timeout = setTimeout(async () => await dealerHit(), 500);
     return () => clearTimeout(timeout);
-  }, [dealerStatus, dealerHand, dealerHandValue, dealerHit]);
+  }, [dealerStatus, dealerHand, dealerHandValue, dealerHit, playerStatus]);
 
   // Determine game status based on player and dealer statuses.
   useEffect(() => {
     if (
       gameStatus === GameStatus.NotPlaying ||
+      gameStatus === GameStatus.Resolving ||
       gameStatus === GameStatus.Finished ||
       gameStatus === GameStatus.Setup
     )
@@ -148,12 +166,18 @@ export const Provider = (props: any) => {
       dealerStatus === Status.Stood ||
       dealerStatus === Status.Bust
     ) {
-      setGameStatus(GameStatus.Finished);
+      setGameStatus(GameStatus.Resolving);
     } else if (playerStatus === Status.Playing)
       setGameStatus(GameStatus.PlayerTurn);
     else if (dealerStatus === Status.Playing)
       setGameStatus(GameStatus.DealerTurn);
   }, [gameStatus, playerStatus, dealerStatus]);
+
+  useEffect(() => {
+    if (gameStatus === GameStatus.Resolving) {
+      setResult(handleGameOver());
+    }
+  }, [gameStatus, handleGameOver]);
 
   //#endregion
 
@@ -167,6 +191,10 @@ export const Provider = (props: any) => {
     setGameStatus(GameStatus.Setup);
     setPlayerStatus(Status.Waiting);
     setDealerStatus(Status.Waiting);
+    setResult(TResult.Undecided);
+
+    setChips((prev) => prev - 10);
+    setBet(10);
 
     try {
       // If a deck ID exists, return cards to it and shuffle them
@@ -268,6 +296,15 @@ export const Provider = (props: any) => {
     setDealerStatus(Status.Playing);
   };
 
+  const doubleDown = async () => {
+    setChips((prev) => (prev -= bet));
+    setBet((prev) => (prev *= 2));
+    await hit(playerHandName).then(() => {
+      if (playerStatus !== Status.Bust && playerStatus !== Status.Charlie)
+        stand();
+    });
+  };
+
   //#endregion
 
   //#region Render
@@ -279,6 +316,7 @@ export const Provider = (props: any) => {
         player: {
           playerStatus,
           chips,
+          bet,
           playerHand,
           playerHandValue,
           splitHand,
@@ -297,6 +335,7 @@ export const Provider = (props: any) => {
           start,
           hit,
           stand,
+          doubleDown,
         },
       }}
     >

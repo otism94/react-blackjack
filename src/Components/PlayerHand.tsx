@@ -43,12 +43,38 @@ const PlayerHand = () => {
             {displayValueOrBlackjack(player.playerHandValue, player.playerHand)}
           </span>
         </p>
+        <div className="chips">
+          <div>
+            <i className="fas fa-coins"></i> {player.bet}
+          </div>
+          <div>
+            <i className="fas fa-piggy-bank"></i> {player.chips}
+          </div>
+        </div>
         <div className="button-group">
           <Button
             title="Hit"
-            disabled={gameStatus !== GameStatus.PlayerTurn}
+            disabled={
+              gameStatus !== GameStatus.PlayerTurn ||
+              player.playerHandValue >= 21
+            }
             className="button button-hud"
             onClick={async () => await actions.hit(playerHandName)}
+          />
+          <Button
+            title="Double Down"
+            disabled={
+              gameStatus !== GameStatus.PlayerTurn ||
+              player.playerHandValue >= 21
+            }
+            className="button button-hud"
+            onClick={async () => await actions.doubleDown()}
+          />
+          <Button
+            title="Split"
+            disabled={true}
+            className="button button-hud"
+            onClick={() => console.log("Split")}
           />
           <Button
             title="Stand"

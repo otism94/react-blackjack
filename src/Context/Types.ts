@@ -10,6 +10,7 @@ export interface IGame {
 export interface IPlayer {
   playerStatus: Status;
   chips: number;
+  bet: number;
   playerHand: TCard[];
   playerHandValue: number;
   splitHand: TCard[];
@@ -35,20 +36,31 @@ export type TCard = {
 };
 
 export enum Status {
-  Waiting,
-  Playing,
-  Blackjack,
-  Charlie,
-  Stood,
-  Bust,
+  Waiting = "Waiting",
+  Playing = "Playing",
+  Blackjack = "Blackjack",
+  Charlie = "Charlie",
+  Stood = "Stood",
+  Bust = "Bust",
 }
 
 export enum GameStatus {
-  NotPlaying,
-  Setup,
-  PlayerTurn,
-  DealerTurn,
-  Finished,
+  NotPlaying = "Not Playing",
+  Setup = "Setup",
+  PlayerTurn = "Player Turn",
+  DealerTurn = "Dealer Turn",
+  Resolving = "Resolving",
+  Finished = "Finished",
+}
+
+export enum TResult {
+  Undecided = "",
+  Win = "Win",
+  Blackjack = "Blackjack",
+  Charlie = "Charlie",
+  Push = "Push",
+  Bust = "Bust",
+  Lose = "Lose",
 }
 
 //#endregion
