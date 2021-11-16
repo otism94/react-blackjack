@@ -59,13 +59,16 @@ export const drawCard = async (deck: string, hand: string, setHand: any) => {
  * Gets a string representation of the passed-in hand's value.
  * @param handValue The value state to turn into a string.
  * @param hand The hand state. Used to determine a blackjack.
- * @returns String containing the value or "Blackjack".
+ * @param charlie Optional bool whether 6-card charlie can be ruled. Dealers do not benefit from this. Default: false.
+ * @returns String containing the value,"Blackjack", or "Charlie".
  */
 export const displayValueOrBlackjack = (
   handValue: number,
-  hand: TCard[]
+  hand: TCard[],
+  charlie: boolean = false
 ): string => {
   if (hand.length === 2 && handValue === 21) return "Blackjack";
+  else if (charlie && hand.length === 6 && handValue <= 21) return "Charlie";
   else return `${handValue}`;
 };
 
@@ -88,8 +91,8 @@ const determineResult = (
   if (
     playerHand.length === 2 &&
     playerHandValue === 21 &&
-    ((dealerHand.length > 2 && dealerHandValue < 21) ||
-      (dealerHand.length > 2 && dealerHandValue > 21))
+    ((dealerHand.length === 2 && dealerHandValue !== 21) ||
+      (dealerHand.length !== 2 && dealerHandValue !== 21))
   )
     return TResult.Blackjack;
   else if (
@@ -101,6 +104,19 @@ const determineResult = (
     return TResult.Push;
   else if (dealerHand.length === 2 && dealerHandValue === 21)
     return TResult.Lose;
+  else if (
+    playerHand.length === 6 &&
+    playerHandValue <= 21 &&
+    dealerHand.length === 2 &&
+    dealerHandValue === 21
+  )
+    return TResult.Lose;
+  else if (
+    playerHand.length === 6 &&
+    playerHandValue <= 21 &&
+    dealerHandValue === 21
+  )
+    return TResult.Push;
   else if (playerHand.length === 6 && playerHandValue <= 21)
     return TResult.Charlie;
   else if (playerHandValue > 21) return TResult.Bust;

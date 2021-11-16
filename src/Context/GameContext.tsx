@@ -8,6 +8,7 @@ import {
 import axios, { AxiosResponse } from "axios";
 import { IGame, GameStatus, Status, TCard, TResult } from "./Types";
 import { determineResultAndPayout, drawCard } from "./Functions";
+import { truncateSync } from "fs";
 
 export const GameContext: any = createContext<IGame>({
   gameStatus: GameStatus.NotPlaying,
@@ -107,8 +108,23 @@ export const Provider = (props: any) => {
 
   // Determine player status when hand changes.
   useEffect(() => {
-    if (playerStatus !== Status.Playing) return;
-    if (playerHand.length === 2 && playerHandValue === 21) {
+    if (playerStatus !== Status.Playing && playerStatus !== Status.DoubledDown)
+      return;
+    if (
+      playerStatus === Status.DoubledDown &&
+      playerHand.length === 6 &&
+      playerHandValue <= 21
+    ) {
+      setPlayerStatus(Status.Charlie);
+      setDealerStatus(Status.Playing);
+    } else if (playerStatus === Status.DoubledDown && playerHandValue <= 21) {
+      setPlayerStatus(Status.Stood);
+      setDealerStatus(Status.Playing);
+    } else if (playerStatus === Status.DoubledDown && playerHandValue > 21) {
+      setPlayerStatus(Status.Bust);
+      setDealerStatus(Status.Stood);
+      setGameStatus(GameStatus.Resolving);
+    } else if (playerHand.length === 2 && playerHandValue === 21) {
       setPlayerStatus(Status.Blackjack);
       if (!dealerCanPushBlackjack()) {
         setDealerStatus(Status.Stood);
@@ -120,8 +136,10 @@ export const Provider = (props: any) => {
     } else if (playerHandValue > 21) {
       setPlayerStatus(Status.Bust);
       setDealerStatus(Status.Stood);
-    } else if (playerHandValue <= 21 && playerHand.length === 6)
+    } else if (playerHandValue <= 21 && playerHand.length === 6) {
       setPlayerStatus(Status.Charlie);
+      setDealerStatus(Status.Playing);
+    }
   }, [playerStatus, playerHand, playerHandValue, dealerCanPushBlackjack]);
 
   // Determine dealer status when hand changes.
@@ -173,6 +191,7 @@ export const Provider = (props: any) => {
       setGameStatus(GameStatus.DealerTurn);
   }, [gameStatus, playerStatus, dealerStatus]);
 
+  // Determine and set the result if the gameStatus is set to resolving.
   useEffect(() => {
     if (gameStatus === GameStatus.Resolving) {
       setResult(handleGameOver());
@@ -282,10 +301,13 @@ export const Provider = (props: any) => {
 
   /**
    * Draws one card from the deck and adds it to the specified hand.
-   * @param hand The API string representation of the hand (pile). Accepted values are: `"player_hand"`, `"split_hand"`, or `"dealer_hand"`.
+   * @param hand The API string representation of the hand (pile). Accepted values are: `"player_hand"` or `"split_hand"`.
    */
-  const hit = async (hand: string) =>
-    await drawCard(deck, playerHandName, setPlayerHand);
+  const hit = async (hand: string) => {
+    if (hand === playerHandName) await drawCard(deck, hand, setPlayerHand);
+    else if (hand === splitHandName) await drawCard(deck, hand, setSplitHand);
+    else return;
+  };
 
   /**
    * Updates the player, dealer, and game statuses when the player stands.
@@ -300,8 +322,7 @@ export const Provider = (props: any) => {
     setChips((prev) => (prev -= bet));
     setBet((prev) => (prev *= 2));
     await hit(playerHandName).then(() => {
-      if (playerStatus !== Status.Bust && playerStatus !== Status.Charlie)
-        stand();
+      setPlayerStatus(Status.DoubledDown);
     });
   };
 

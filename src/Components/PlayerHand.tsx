@@ -40,7 +40,11 @@ const PlayerHand = () => {
         <p className="hand-value">
           Player:{" "}
           <span className={player.playerHandValue <= 21 ? "" : "bust"}>
-            {displayValueOrBlackjack(player.playerHandValue, player.playerHand)}
+            {displayValueOrBlackjack(
+              player.playerHandValue,
+              player.playerHand,
+              true
+            )}
           </span>
         </p>
         <div className="chips">

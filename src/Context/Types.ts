@@ -40,6 +40,7 @@ export enum Status {
   Playing = "Playing",
   Blackjack = "Blackjack",
   Charlie = "Charlie",
+  DoubledDown = "Doubled Down",
   Stood = "Stood",
   Bust = "Bust",
 }
