@@ -15,6 +15,7 @@ export interface IPlayer {
   playerHandValue: number;
   splitHand: TCard[];
   splitHandValue: number;
+  insurance: boolean;
 }
 
 export interface IDealer {

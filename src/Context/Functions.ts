@@ -1,5 +1,4 @@
 import axios, { AxiosResponse } from "axios";
-import Result from "../Components/Result";
 import { GameStatus, TResult, TCard } from "./Types";
 
 /**
@@ -130,7 +129,8 @@ const determinePayout = (
   result: TResult,
   bet: number,
   setBet: any,
-  setChips: any
+  setChips: any,
+  insurancePayout: number
 ) => {
   if (result === TResult.Blackjack) {
     setChips((prev: number) => prev + bet * 1.5);
@@ -139,9 +139,23 @@ const determinePayout = (
     setChips((prev: number) => prev + bet * 2);
     setBet(0);
   } else if (result === TResult.Push) {
-    setChips((prev: number) => prev + bet);
+    setChips((prev: number) => prev + insurancePayout + bet);
     setBet(0);
-  } else setBet(0);
+  } else {
+    if (insurancePayout > 0) setChips((prev: number) => prev + insurancePayout);
+    setBet(0);
+  }
+};
+
+const determineInsurancePayout = (
+  dealerHand: TCard[],
+  dealerHandValue: number,
+  result: TResult
+): number => {
+  if (result === TResult.Bust) return 0;
+  else if (dealerHand.length === 2 && dealerHandValue === 21) return 10;
+  else if (dealerHandValue > 21) return 5;
+  else return 0;
 };
 
 export const determineResultAndPayout = (
@@ -152,7 +166,8 @@ export const determineResultAndPayout = (
   bet: number,
   setBet: any,
   setChips: any,
-  setGameStatus: any
+  setGameStatus: any,
+  insurance: boolean
 ): TResult => {
   const result = determineResult(
     playerHand,
@@ -160,7 +175,10 @@ export const determineResultAndPayout = (
     dealerHand,
     dealerHandValue
   );
-  determinePayout(result, bet, setBet, setChips);
+  const insurancePayout: number = insurance
+    ? determineInsurancePayout(dealerHand, dealerHandValue, result)
+    : 0;
+  determinePayout(result, bet, setBet, setChips, insurancePayout);
   setGameStatus(GameStatus.Finished);
   return result;
 };

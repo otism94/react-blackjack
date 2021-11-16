@@ -76,7 +76,11 @@ const PlayerHand = () => {
           />
           <Button
             title="Split"
-            disabled={true}
+            disabled={
+              player.playerHand.length !== 2 ||
+              (player.playerHand.length === 2 &&
+                player.playerHand[0]?.value !== player.playerHand[1]?.value)
+            }
             className="button button-hud"
             onClick={() => console.log("Split")}
           />

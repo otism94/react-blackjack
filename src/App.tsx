@@ -14,7 +14,8 @@ import Result from "./Components/Result";
 //#endregion
 
 const App = () => {
-  const { gameStatus, result, actions } = useContext(GameContext);
+  const { dealer, gameStatus, player, result, actions } =
+    useContext(GameContext);
 
   return (
     <>
@@ -29,6 +30,16 @@ const App = () => {
             disabled={false}
             className="button"
             onClick={async () => await actions.start()}
+          />
+        ) : null}
+        {gameStatus === GameStatus.PlayerTurn &&
+        dealer.dealerHand.length === 1 &&
+        dealer.dealerHandValue === 11 ? (
+          <Button
+            title="Insurance"
+            disabled={player.playerHand.length > 2 || player.insurance}
+            className="button"
+            onClick={() => actions.buyInsurance()}
           />
         ) : null}
       </div>

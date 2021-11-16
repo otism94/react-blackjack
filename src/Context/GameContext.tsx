@@ -8,7 +8,6 @@ import {
 import axios, { AxiosResponse } from "axios";
 import { IGame, GameStatus, Status, TCard, TResult } from "./Types";
 import { determineResultAndPayout, drawCard } from "./Functions";
-import { truncateSync } from "fs";
 
 export const GameContext: any = createContext<IGame>({
   gameStatus: GameStatus.NotPlaying,
@@ -21,6 +20,7 @@ export const GameContext: any = createContext<IGame>({
     playerHandValue: 0,
     splitHand: [],
     splitHandValue: 0,
+    insurance: false,
   },
   dealer: {
     dealerStatus: Status.Waiting,
@@ -52,6 +52,7 @@ export const Provider = (props: any) => {
     () => updateHandValue(splitHand),
     [splitHand]
   );
+  const [insurance, setInsurance] = useState<boolean>(false);
 
   // Dealer state
   const [dealerStatus, setDealerStatus] = useState<Status>(Status.Waiting);
@@ -98,9 +99,17 @@ export const Provider = (props: any) => {
       bet,
       setBet,
       setChips,
-      setGameStatus
+      setGameStatus,
+      insurance
     );
-  }, [bet, dealerHand, dealerHandValue, playerHand, playerHandValue]);
+  }, [
+    bet,
+    dealerHand,
+    dealerHandValue,
+    playerHand,
+    playerHandValue,
+    insurance,
+  ]);
 
   //#endregion
 
@@ -208,6 +217,7 @@ export const Provider = (props: any) => {
   const start = async () => {
     // Set game and player statuses.
     setGameStatus(GameStatus.Setup);
+    if (insurance) setInsurance(false);
     setPlayerStatus(Status.Waiting);
     setDealerStatus(Status.Waiting);
     setResult(TResult.Undecided);
@@ -318,12 +328,24 @@ export const Provider = (props: any) => {
     setDealerStatus(Status.Playing);
   };
 
+  /**
+   * Doubles the player's bet and draws one card before forcing stand (or bust).
+   */
   const doubleDown = async () => {
     setChips((prev) => (prev -= bet));
     setBet((prev) => (prev *= 2));
     await hit(playerHandName).then(() => {
       setPlayerStatus(Status.DoubledDown);
     });
+  };
+
+  /**
+   * The player can buy insurance (50% of their buy-in) when the dealer has an ace.
+   * It pays out 2:1 if the dealer gets a blackjack.
+   */
+  const buyInsurance = () => {
+    setChips((prev) => (prev -= bet / 2));
+    setInsurance(true);
   };
 
   //#endregion
@@ -342,6 +364,7 @@ export const Provider = (props: any) => {
           playerHandValue,
           splitHand,
           splitHandValue,
+          insurance,
         },
         dealer: {
           dealerStatus,
@@ -357,6 +380,7 @@ export const Provider = (props: any) => {
           hit,
           stand,
           doubleDown,
+          buyInsurance,
         },
       }}
     >
