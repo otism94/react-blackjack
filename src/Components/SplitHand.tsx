@@ -36,7 +36,7 @@ const SplitHand = () => {
 
   return (
     <>
-      <div className="player-hud">
+      <div id="split-hud">
         <p className="hand-value">
           Split:{" "}
           <span className={player.splitHandValue <= 21 ? "" : "bust"}>

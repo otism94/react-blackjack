@@ -47,8 +47,13 @@ const App = () => {
           />
         ) : null}
       </div>
-      <PlayerHand />
-      {player.splitHand.length > 0 ? <SplitHand /> : null}
+      <div className="flex-row">
+        <PlayerHand />
+        {player.splitHand.length > 0 ? <SplitHand /> : null}
+      </div>
+      <div id="bank">
+        <i className="fas fa-piggy-bank"></i> {player.chips}
+      </div>
     </>
   );
 };
