@@ -4,7 +4,7 @@ import Card from "./Card";
 import CardSlot from "./CardSlot";
 import { displayValueOrBlackjack } from "../Context/Functions";
 import type { TCard } from "../Context/Types";
-import { GameStatus } from "../Context/Types";
+import { GameStatus, Status } from "../Context/Types";
 import { GameContext } from "../Context/GameContext";
 
 const PlayerHand = () => {
@@ -36,13 +36,14 @@ const PlayerHand = () => {
 
   return (
     <>
-      <div id="player-hud">
+      <div className="player-hud">
         <p className="hand-value">
           Player:{" "}
           <span className={player.playerHandValue <= 21 ? "" : "bust"}>
             {displayValueOrBlackjack(
               player.playerHandValue,
               player.playerHand,
+              player.splitHand.length === 0,
               true
             )}
           </span>
@@ -59,8 +60,12 @@ const PlayerHand = () => {
           <Button
             title="Hit"
             disabled={
+              player.playerHandStatus !== Status.Playing ||
               gameStatus !== GameStatus.PlayerTurn ||
-              player.playerHandValue >= 21
+              player.playerHandValue >= 21 ||
+              player.playerHand.length === 6 ||
+              (player.splitHandStatus === Status.Playing &&
+                player.splitHand.length < player.playerHand.length)
             }
             className="button button-hud"
             onClick={async () => await actions.hit(playerHandName)}
@@ -68,27 +73,34 @@ const PlayerHand = () => {
           <Button
             title="Double Down"
             disabled={
+              player.playerHandStatus !== Status.Playing ||
               gameStatus !== GameStatus.PlayerTurn ||
-              player.playerHandValue >= 21
+              player.playerHandValue >= 21 ||
+              player.playerHand.length === 6
             }
             className="button button-hud"
-            onClick={async () => await actions.doubleDown()}
+            onClick={async () => await actions.doubleDown(playerHandName)}
           />
           <Button
             title="Split"
             disabled={
+              player.playerHandStatus !== Status.Playing ||
               player.playerHand.length !== 2 ||
+              player.splitHand.length > 0 ||
               (player.playerHand.length === 2 &&
                 player.playerHand[0]?.value !== player.playerHand[1]?.value)
             }
             className="button button-hud"
-            onClick={() => console.log("Split")}
+            onClick={() => actions.split()}
           />
           <Button
             title="Stand"
-            disabled={gameStatus !== GameStatus.PlayerTurn}
+            disabled={
+              player.playerHandStatus !== Status.Playing ||
+              gameStatus !== GameStatus.PlayerTurn
+            }
             className="button button-hud"
-            onClick={() => actions.stand()}
+            onClick={() => actions.stand(playerHandName)}
           />
         </div>
       </div>

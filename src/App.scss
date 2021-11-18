@@ -48,20 +48,28 @@ h1 {
 }
 
 h2,
-h3 {
+h3,
+h4 {
   text-align: center;
+  font-variant: small-caps;
   letter-spacing: 0.6px;
 }
 
 h2 {
   margin-bottom: 0;
+  line-height: 90%;
   color: rgb(196, 0, 0);
 }
 
 h3 {
   margin-top: 0;
+  margin-bottom: 0;
   font-style: italic;
-  color: rgb(53, 53, 53);
+  color: rgb(255, 215, 0);
+}
+
+h4 {
+  margin-top: 0;
 }
 
 .suit-red {
@@ -123,13 +131,13 @@ h3 {
   }
 }
 
-#player-hud {
+.player-hud {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-#player-hud p {
+.player-hud p {
   display: inline-block;
 }
 

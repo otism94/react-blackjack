@@ -9,7 +9,8 @@ const Header = () => {
       </h1>
       <div id="header-info">
         <h2>Blackjack pays 3 to 2</h2>
-        <h3>Dealer must draw to 16, and stand on all 17's</h3>
+        <h3>Dealer must draw to 16 and stand on all 17s</h3>
+        <h4>Insurance pays 2 to 1</h4>
       </div>
     </header>
   );
