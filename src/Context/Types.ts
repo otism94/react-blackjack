@@ -8,14 +8,16 @@ export interface IGame {
 }
 
 export interface IPlayer {
-  playerStatus: Status;
   chips: number;
   bet: number;
+  playerHandStatus: Status;
   playerHand: TCard[];
   playerHandValue: number;
+  splitBet: number;
+  splitHandStatus: Status;
   splitHand: TCard[];
   splitHandValue: number;
-  insurance: boolean;
+  insurance: number;
 }
 
 export interface IDealer {
@@ -63,6 +65,8 @@ export enum TResult {
   Push = "Push",
   Bust = "Bust",
   Lose = "Lose",
+  InsuredLoss = "Insurance",
+  InsuredPush = "Insured Push",
 }
 
 //#endregion

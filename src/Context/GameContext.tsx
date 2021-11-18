@@ -13,14 +13,16 @@ export const GameContext: any = createContext<IGame>({
   gameStatus: GameStatus.NotPlaying,
   deck: "",
   player: {
-    playerStatus: Status.Waiting,
     chips: 200,
     bet: 0,
+    playerHandStatus: Status.Waiting,
     playerHand: [],
     playerHandValue: 0,
+    splitBet: 0,
+    splitHandStatus: Status.Waiting,
     splitHand: [],
     splitHandValue: 0,
-    insurance: false,
+    insurance: 0,
   },
   dealer: {
     dealerStatus: Status.Waiting,
@@ -39,7 +41,9 @@ export const Provider = (props: any) => {
   const [deck, setDeck] = useState<string>("");
 
   // Player state
-  const [playerStatus, setPlayerStatus] = useState<Status>(Status.Waiting);
+  const [playerHandStatus, setPlayerHandStatus] = useState<Status>(
+    Status.Waiting
+  );
   const [chips, setChips] = useState<number>(200);
   const [bet, setBet] = useState<number>(0);
   const [playerHand, setPlayerHand] = useState<TCard[]>([]);
@@ -47,12 +51,16 @@ export const Provider = (props: any) => {
     () => updateHandValue(playerHand),
     [playerHand]
   );
+  const [splitBet, setSplitBet] = useState<number>(0);
+  const [splitHandStatus, setSplitHandStatus] = useState<Status>(
+    Status.Waiting
+  );
   const [splitHand, setSplitHand] = useState<TCard[]>([]);
   const splitHandValue: number = useMemo(
     () => updateHandValue(splitHand),
     [splitHand]
   );
-  const [insurance, setInsurance] = useState<boolean>(false);
+  const [insurance, setInsurance] = useState<number>(0);
 
   // Dealer state
   const [dealerStatus, setDealerStatus] = useState<Status>(Status.Waiting);
@@ -64,6 +72,7 @@ export const Provider = (props: any) => {
 
   // Result
   const [result, setResult] = useState<TResult>(TResult.Undecided);
+  const [splitResult, setSplitResult] = useState<TResult>(TResult.Undecided);
 
   // Hand API names
   const playerHandName: string = "player_hand";
@@ -94,20 +103,27 @@ export const Provider = (props: any) => {
     return determineResultAndPayout(
       playerHand,
       playerHandValue,
+      splitHand,
+      splitHandValue,
       dealerHand,
       dealerHandValue,
       bet,
       setBet,
+      splitBet,
+      setSplitBet,
       setChips,
       setGameStatus,
       insurance
     );
   }, [
     bet,
+    splitBet,
     dealerHand,
     dealerHandValue,
     playerHand,
     playerHandValue,
+    splitHand,
+    splitHandValue,
     insurance,
   ]);
 
@@ -117,49 +133,112 @@ export const Provider = (props: any) => {
 
   // Determine player status when hand changes.
   useEffect(() => {
-    if (playerStatus !== Status.Playing && playerStatus !== Status.DoubledDown)
-      return;
-    if (
-      playerStatus === Status.DoubledDown &&
-      playerHand.length === 6 &&
-      playerHandValue <= 21
-    ) {
-      setPlayerStatus(Status.Charlie);
-      setDealerStatus(Status.Playing);
-    } else if (playerStatus === Status.DoubledDown && playerHandValue <= 21) {
-      setPlayerStatus(Status.Stood);
-      setDealerStatus(Status.Playing);
-    } else if (playerStatus === Status.DoubledDown && playerHandValue > 21) {
-      setPlayerStatus(Status.Bust);
-      setDealerStatus(Status.Stood);
-      setGameStatus(GameStatus.Resolving);
-    } else if (playerHand.length === 2 && playerHandValue === 21) {
-      setPlayerStatus(Status.Blackjack);
-      if (!dealerCanPushBlackjack()) {
+    if (splitHand.length === 0) {
+      if (
+        playerHandStatus !== Status.Playing &&
+        playerHandStatus !== Status.DoubledDown
+      )
+        return;
+      if (playerHandStatus === Status.DoubledDown && playerHandValue <= 21) {
+        setPlayerHandStatus(Status.Stood);
+        setDealerStatus(Status.Playing);
+      } else if (
+        playerHandStatus === Status.DoubledDown &&
+        playerHandValue > 21
+      ) {
+        setPlayerHandStatus(Status.Bust);
         setDealerStatus(Status.Stood);
         setGameStatus(GameStatus.Resolving);
-      } else if (dealerCanPushBlackjack()) {
-        setDealerStatus(Status.Playing);
-        setGameStatus(GameStatus.DealerTurn);
+      } else if (playerHandValue > 21) {
+        setPlayerHandStatus(Status.Bust);
+        setDealerStatus(Status.Stood);
       }
-    } else if (playerHandValue > 21) {
-      setPlayerStatus(Status.Bust);
-      setDealerStatus(Status.Stood);
-    } else if (playerHandValue <= 21 && playerHand.length === 6) {
-      setPlayerStatus(Status.Charlie);
-      setDealerStatus(Status.Playing);
+    } else if (splitHand.length >= 2) {
+      if (
+        (playerHandStatus !== Status.Playing &&
+          playerHandStatus !== Status.DoubledDown) ||
+        splitHand.length < 2
+      )
+        return;
+      if (playerHand[0].value === "ACE") {
+        setPlayerHandStatus(Status.Stood);
+      } else if (
+        playerHandStatus === Status.DoubledDown &&
+        playerHandValue <= 21
+      ) {
+        setPlayerHandStatus(Status.Stood);
+      } else if (
+        playerHandStatus === Status.DoubledDown &&
+        playerHandValue > 21
+      ) {
+        setPlayerHandStatus(Status.Bust);
+      } else if (
+        playerHandValue === 21 &&
+        playerHand.length < 6 &&
+        playerHandStatus !== Status.DoubledDown
+      ) {
+        setPlayerHandStatus(Status.Stood);
+      } else if (playerHandValue > 21) {
+        setPlayerHandStatus(Status.Bust);
+      }
     }
-  }, [playerStatus, playerHand, playerHandValue, dealerCanPushBlackjack]);
+  }, [
+    playerHandStatus,
+    playerHand,
+    playerHandValue,
+    splitHand,
+    dealerCanPushBlackjack,
+  ]);
+
+  // Equivalent of above useEffect for the split hand.
+  useEffect(() => {
+    if (
+      (splitHandStatus !== Status.Playing &&
+        splitHandStatus !== Status.DoubledDown) ||
+      splitHand.length < 2
+    )
+      return;
+    if (splitHand[0].value === "ACE") {
+      setSplitHandStatus(Status.Stood);
+    } else if (splitHandStatus === Status.DoubledDown && splitHandValue <= 21) {
+      setSplitHandStatus(Status.Stood);
+    } else if (splitHandStatus === Status.DoubledDown && splitHandValue > 21) {
+      setSplitHandStatus(Status.Bust);
+    } else if (
+      splitHandValue === 21 &&
+      splitHand.length < 6 &&
+      splitHandStatus !== Status.DoubledDown
+    ) {
+      setSplitHandStatus(Status.Stood);
+    } else if (splitHandValue > 21) {
+      setSplitHandStatus(Status.Bust);
+    }
+  }, [splitHandStatus, splitHand, splitHandValue]);
+
+  // Handle different combinations of finished hand states when the player has split.
+  useEffect(() => {
+    if (splitHandStatus === Status.Waiting) return;
+    if (playerHandStatus === Status.Bust && splitHandStatus === Status.Bust) {
+      setDealerStatus(Status.Stood);
+      setGameStatus(GameStatus.Resolving);
+    } else if (
+      playerHandStatus !== Status.Playing &&
+      splitHandStatus !== Status.Playing &&
+      dealerStatus === Status.Waiting
+    )
+      setDealerStatus(Status.Playing);
+  }, [playerHandStatus, splitHandStatus, dealerStatus]);
 
   // Determine dealer status when hand changes.
   useEffect(() => {
     if (dealerStatus !== Status.Playing) return;
     if (
-      playerStatus === Status.Blackjack &&
+      playerHandStatus === Status.Blackjack &&
       dealerHand.length === 2 &&
       dealerHandValue < 21
     ) {
       setDealerStatus(Status.Stood);
+      if (insurance) setPlayerHandStatus(Status.Stood);
     } else if (dealerHand.length === 2 && dealerHandValue === 21) {
       setDealerStatus(Status.Blackjack);
       return;
@@ -175,35 +254,84 @@ export const Provider = (props: any) => {
     }
     const timeout = setTimeout(async () => await dealerHit(), 500);
     return () => clearTimeout(timeout);
-  }, [dealerStatus, dealerHand, dealerHandValue, dealerHit, playerStatus]);
+  }, [
+    dealerStatus,
+    dealerHand,
+    dealerHandValue,
+    dealerHit,
+    playerHandStatus,
+    insurance,
+  ]);
 
-  // Determine game status based on player and dealer statuses.
+  // Determine game status based on player, split, and dealer statuses.
   useEffect(() => {
-    if (
-      gameStatus === GameStatus.NotPlaying ||
-      gameStatus === GameStatus.Resolving ||
-      gameStatus === GameStatus.Finished ||
-      gameStatus === GameStatus.Setup
-    )
-      return;
-    if (
-      playerStatus === Status.Bust ||
-      playerStatus === Status.Charlie ||
-      dealerStatus === Status.Blackjack ||
-      dealerStatus === Status.Stood ||
-      dealerStatus === Status.Bust
-    ) {
-      setGameStatus(GameStatus.Resolving);
-    } else if (playerStatus === Status.Playing)
-      setGameStatus(GameStatus.PlayerTurn);
-    else if (dealerStatus === Status.Playing)
-      setGameStatus(GameStatus.DealerTurn);
-  }, [gameStatus, playerStatus, dealerStatus]);
+    if (splitHandStatus === Status.Waiting) {
+      if (
+        gameStatus === GameStatus.NotPlaying ||
+        gameStatus === GameStatus.Resolving ||
+        gameStatus === GameStatus.Finished ||
+        gameStatus === GameStatus.Setup
+      )
+        return;
+      if (
+        playerHandStatus === Status.Bust ||
+        playerHandStatus === Status.Charlie ||
+        dealerStatus === Status.Blackjack ||
+        dealerStatus === Status.Stood ||
+        dealerStatus === Status.Bust
+      ) {
+        setGameStatus(GameStatus.Resolving);
+      } else if (playerHandStatus === Status.Playing)
+        setGameStatus(GameStatus.PlayerTurn);
+      else if (playerHandStatus === Status.Stood)
+        setGameStatus(GameStatus.DealerTurn);
+      else if (dealerStatus === Status.Playing)
+        setGameStatus(GameStatus.DealerTurn);
+    } else {
+      if (
+        gameStatus === GameStatus.NotPlaying ||
+        gameStatus === GameStatus.Resolving ||
+        gameStatus === GameStatus.Finished ||
+        gameStatus === GameStatus.Setup
+      )
+        return;
+      if (
+        ((playerHandStatus === Status.Bust ||
+          playerHandStatus === Status.Charlie) &&
+          (splitHandStatus === Status.Bust ||
+            splitHandStatus === Status.Charlie)) ||
+        dealerStatus === Status.Blackjack ||
+        dealerStatus === Status.Stood ||
+        dealerStatus === Status.Bust
+      ) {
+        setGameStatus(GameStatus.Resolving);
+      } else if (
+        playerHandStatus === Status.Playing ||
+        splitHandStatus === Status.Playing
+      )
+        setGameStatus(GameStatus.PlayerTurn);
+      else if (
+        (playerHandStatus === Status.Stood ||
+          playerHandStatus === Status.Bust ||
+          playerHandStatus === Status.Charlie ||
+          playerHandStatus === Status.DoubledDown) &&
+        (splitHandStatus === Status.Stood ||
+          splitHandStatus === Status.Bust ||
+          splitHandStatus === Status.Charlie ||
+          splitHandStatus === Status.DoubledDown)
+      )
+        setGameStatus(GameStatus.DealerTurn);
+      else if (dealerStatus === Status.Playing)
+        setGameStatus(GameStatus.DealerTurn);
+    }
+  }, [gameStatus, playerHandStatus, splitHandStatus, dealerStatus]);
 
   // Determine and set the result if the gameStatus is set to resolving.
   useEffect(() => {
     if (gameStatus === GameStatus.Resolving) {
-      setResult(handleGameOver());
+      const results = handleGameOver();
+      setResult(results[0]);
+      setSplitResult(results[1]);
     }
   }, [gameStatus, handleGameOver]);
 
@@ -217,11 +345,13 @@ export const Provider = (props: any) => {
   const start = async () => {
     // Set game and player statuses.
     setGameStatus(GameStatus.Setup);
-    if (insurance) setInsurance(false);
-    setPlayerStatus(Status.Waiting);
+    if (insurance > 0) setInsurance(0);
+    setPlayerHandStatus(Status.Waiting);
+    setSplitHandStatus(Status.Waiting);
     setDealerStatus(Status.Waiting);
+    if (splitHand.length > 0) setSplitHand([]);
     setResult(TResult.Undecided);
-
+    setSplitResult(TResult.Undecided);
     setChips((prev) => prev - 10);
     setBet(10);
 
@@ -303,7 +433,7 @@ export const Provider = (props: any) => {
       setDealerHand(dealerHandRes.data.piles.dealer_hand.cards);
 
       setGameStatus(GameStatus.PlayerTurn);
-      setPlayerStatus(Status.Playing);
+      setPlayerHandStatus(Status.Playing);
     } catch (ex) {
       console.log(ex);
     }
@@ -322,30 +452,125 @@ export const Provider = (props: any) => {
   /**
    * Updates the player, dealer, and game statuses when the player stands.
    */
-  const stand = () => {
-    setPlayerStatus(Status.Stood);
-    setGameStatus(GameStatus.DealerTurn);
-    setDealerStatus(Status.Playing);
+  const stand = (handName: string) => {
+    if (handName === playerHandName) setPlayerHandStatus(Status.Stood);
+    else if (handName === splitHandName) setSplitHandStatus(Status.Stood);
+    else return;
+    if (
+      (handName === splitHandName && playerHandStatus !== Status.Playing) ||
+      (handName === playerHandName && splitHandStatus !== Status.Playing)
+    ) {
+      setGameStatus(GameStatus.DealerTurn);
+      setDealerStatus(Status.Playing);
+    } else return;
   };
 
   /**
    * Doubles the player's bet and draws one card before forcing stand (or bust).
    */
-  const doubleDown = async () => {
-    setChips((prev) => (prev -= bet));
-    setBet((prev) => (prev *= 2));
-    await hit(playerHandName).then(() => {
-      setPlayerStatus(Status.DoubledDown);
-    });
+  const doubleDown = async (handName: string) => {
+    if (handName === playerHandName) {
+      setChips((prev) => (prev -= bet));
+      setBet((prev) => (prev *= 2));
+      await hit(playerHandName).then(() => {
+        setPlayerHandStatus(Status.DoubledDown);
+      });
+    } else if (handName === splitHandName) {
+      setChips((prev) => (prev -= splitBet));
+      setSplitBet((prev) => (prev *= 2));
+      await hit(splitHandName).then(() => {
+        setSplitHandStatus(Status.DoubledDown);
+      });
+    } else return;
   };
 
   /**
-   * The player can buy insurance (50% of their buy-in) when the dealer has an ace.
+   * The player can buy insurance (50% of their bet) when the dealer has an ace.
    * It pays out 2:1 if the dealer gets a blackjack.
    */
-  const buyInsurance = () => {
-    setChips((prev) => (prev -= bet / 2));
-    setInsurance(true);
+  const buyInsurance = async () => {
+    const insuranceChips: number = bet / 2;
+    setChips((prev) => (prev -= insuranceChips));
+    setInsurance(insuranceChips);
+    if (splitHand.length >= 2) stand(splitHandName);
+    stand(playerHandName);
+  };
+
+  /**
+   * The player can split their hand if they start with two indentical-value cards.
+   * Both hands then hit immediately. If they get 21, it's not a blackjack.
+   * There is no resplitting.
+   */
+  const split = async () => {
+    setSplitBet(10);
+    setChips((prev: number) => (prev -= 10));
+
+    try {
+      const cardToMove: string = playerHand[1].code;
+
+      // Remove the second card from the player's hand.
+      await axios
+        .get(
+          `https://deckofcardsapi.com/api/deck/${deck}/pile/${playerHandName}/draw/?cards=${cardToMove}`
+        )
+        .then((res) => {
+          if (!res.data.success)
+            throw new Error("Failed drawing card from pile.");
+        });
+
+      // Draw two new cards from the deck.
+      const newCardsRes: AxiosResponse = await axios.get(
+        `http://deckofcardsapi.com/api/deck/${deck}/draw/?count=2`
+      );
+
+      if (!newCardsRes.data.success) throw new Error("Error drawing cards.");
+
+      const playerHandCard: string = newCardsRes.data.cards[0].code;
+      const splitHandCards: string = `${cardToMove},${newCardsRes.data.cards[1].code}`;
+
+      // Add one of the new cards to the player hand.
+      await axios
+        .get(
+          `http://deckofcardsapi.com/api/deck/${deck}/pile/${playerHandName}/add/?cards=${playerHandCard}`
+        )
+        .then((res) => {
+          if (!res.data.success)
+            throw new Error("Error adding card to player hand.");
+        });
+
+      // Add the card that was removed from the player's hand plus the other new card to the split hand.
+      await axios
+        .get(
+          `http://deckofcardsapi.com/api/deck/${deck}/pile/${splitHandName}/add/?cards=${splitHandCards}`
+        )
+        .then((res) => {
+          if (!res.data.success)
+            throw new Error("Error adding cards to split hand.");
+        });
+
+      // Get the player's hand from the API and update its state.
+      const playerHandRes: AxiosResponse = await axios.get(
+        `http://deckofcardsapi.com/api/deck/${deck}/pile/${playerHandName}/list/`
+      );
+
+      if (!playerHandRes.data.success)
+        throw new Error("Failed to fetch player hand.");
+
+      setPlayerHand(playerHandRes.data.piles.player_hand.cards);
+
+      // Get the split hand from the API and update its state.
+      const splitHandRes: AxiosResponse = await axios.get(
+        `http://deckofcardsapi.com/api/deck/${deck}/pile/${splitHandName}/list/`
+      );
+
+      if (!splitHandRes.data.success)
+        throw new Error("Failed to fetch player hand.");
+
+      setSplitHand(splitHandRes.data.piles.split_hand.cards);
+      setSplitHandStatus(Status.Playing);
+    } catch (ex) {
+      console.log(ex);
+    }
   };
 
   //#endregion
@@ -357,11 +582,13 @@ export const Provider = (props: any) => {
         gameStatus,
         deck,
         player: {
-          playerStatus,
           chips,
           bet,
+          playerHandStatus,
           playerHand,
           playerHandValue,
+          splitBet,
+          splitHandStatus,
           splitHand,
           splitHandValue,
           insurance,
@@ -372,6 +599,7 @@ export const Provider = (props: any) => {
           dealerHandValue,
         },
         result,
+        splitResult,
         playerHandName,
         splitHandName,
         dealerHandName,
@@ -381,6 +609,7 @@ export const Provider = (props: any) => {
           stand,
           doubleDown,
           buyInsurance,
+          split,
         },
       }}
     >

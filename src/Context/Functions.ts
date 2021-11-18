@@ -64,9 +64,10 @@ export const drawCard = async (deck: string, hand: string, setHand: any) => {
 export const displayValueOrBlackjack = (
   handValue: number,
   hand: TCard[],
+  blackjack: boolean = true,
   charlie: boolean = false
 ): string => {
-  if (hand.length === 2 && handValue === 21) return "Blackjack";
+  if (blackjack && hand.length === 2 && handValue === 21) return "Blackjack";
   else if (charlie && hand.length === 6 && handValue <= 21) return "Charlie";
   else return `${handValue}`;
 };
@@ -85,9 +86,11 @@ const determineResult = (
   playerHand: TCard[],
   playerHandValue: number,
   dealerHand: TCard[],
-  dealerHandValue: number
+  dealerHandValue: number,
+  canBlackjack: boolean = true
 ): TResult => {
   if (
+    canBlackjack &&
     playerHand.length === 2 &&
     playerHandValue === 21 &&
     ((dealerHand.length === 2 && dealerHandValue !== 21) ||
@@ -95,6 +98,7 @@ const determineResult = (
   )
     return TResult.Blackjack;
   else if (
+    canBlackjack &&
     playerHand.length === 2 &&
     playerHandValue === 21 &&
     dealerHand.length === 2 &&
@@ -130,55 +134,68 @@ const determinePayout = (
   bet: number,
   setBet: any,
   setChips: any,
-  insurancePayout: number
+  insurance: number = 0
 ) => {
-  if (result === TResult.Blackjack) {
+  if (result === TResult.Blackjack)
     setChips((prev: number) => prev + bet * 1.5);
-    setBet(0);
-  } else if (result === TResult.Win || result === TResult.Charlie) {
+  else if (result === TResult.Win || result === TResult.Charlie)
     setChips((prev: number) => prev + bet * 2);
-    setBet(0);
-  } else if (result === TResult.Push) {
-    setChips((prev: number) => prev + insurancePayout + bet);
-    setBet(0);
-  } else {
-    if (insurancePayout > 0) setChips((prev: number) => prev + insurancePayout);
-    setBet(0);
-  }
-};
+  else if (result === TResult.Push)
+    setChips((prev: number) => prev + bet + insurance);
+  else setChips((prev: number) => prev + insurance);
 
-const determineInsurancePayout = (
-  dealerHand: TCard[],
-  dealerHandValue: number,
-  result: TResult
-): number => {
-  if (result === TResult.Bust) return 0;
-  else if (dealerHand.length === 2 && dealerHandValue === 21) return 10;
-  else if (dealerHandValue > 21) return 5;
-  else return 0;
+  setBet(0);
 };
 
 export const determineResultAndPayout = (
   playerHand: TCard[],
   playerHandValue: number,
+  splitHand: TCard[],
+  splitHandValue: number,
   dealerHand: TCard[],
   dealerHandValue: number,
   bet: number,
   setBet: any,
+  splitBet: number,
+  setSplitBet: any,
   setChips: any,
   setGameStatus: any,
-  insurance: boolean
-): TResult => {
-  const result = determineResult(
+  insurance: number
+): TResult[] => {
+  const insurancePayout: number =
+    insurance > 0 &&
+    dealerHand[0].value === "ACE" &&
+    dealerHand.length === 2 &&
+    dealerHandValue === 21
+      ? insurance * 2
+      : 0;
+
+  let result: TResult = determineResult(
     playerHand,
     playerHandValue,
     dealerHand,
-    dealerHandValue
+    dealerHandValue,
+    splitHand.length === 0
   );
-  const insurancePayout: number = insurance
-    ? determineInsurancePayout(dealerHand, dealerHandValue, result)
-    : 0;
+
+  if (insurancePayout > 0 && result === TResult.Lose)
+    result = TResult.InsuredLoss;
+  else if (insurancePayout > 0 && result === TResult.Push)
+    result = TResult.InsuredPush;
+
+  const splitResult: TResult = splitHand.length
+    ? determineResult(
+        splitHand,
+        splitHandValue,
+        dealerHand,
+        dealerHandValue,
+        false
+      )
+    : TResult.Undecided;
+
   determinePayout(result, bet, setBet, setChips, insurancePayout);
+  if (splitResult !== TResult.Undecided)
+    determinePayout(splitResult, splitBet, setSplitBet, setChips);
   setGameStatus(GameStatus.Finished);
-  return result;
+  return [result, splitResult];
 };
